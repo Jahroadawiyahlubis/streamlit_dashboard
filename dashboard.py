@@ -24,7 +24,7 @@ selected_months = st.sidebar.multiselect("Pilih Bulan", options=sorted(df["Month
 filtered_df = df[(df["Country"].isin(selected_countries)) & (df["Month"].isin(selected_months))]
 
 # Judul Dashboard
-st.title("📊 Online Retail Business Dashboard")
+st.title("📊 Online Retail Dashboard")
 
 # Ringkasan Bisnis
 st.subheader("📌 Ringkasan Bisnis")
