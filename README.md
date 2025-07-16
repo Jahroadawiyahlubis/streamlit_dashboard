@@ -1,6 +1,6 @@
 # 📊 Online Retail Dashboard (Streamlit)
 
-Proyek ini disusun sebagai bagian dari pemenuhan tugas **Ujian Akhir Semester** mata kuliah **Data Warehouse dan Big Data**. Dashboard interaktif ini dibangun menggunakan Streamlit, dengan tujuan menyajikan visualisasi data transaksi e-commerce secara informatif untuk menggali **insight bisnis** dan menyusun **rekomendasi strategis** berdasarkan data aktual.
+Proyek ini disusun sebagai bagian dari pemenuhan tugas **Ujian Akhir Semester** mata kuliah **Data Warehouse dan Big Data** Dengan Dosen Pengampu Ibu **Inna Sabilly Karima, S.Kom, M.Kom**. Dashboard interaktif ini dibangun menggunakan Streamlit, dengan tujuan menyajikan visualisasi data transaksi e-commerce secara informatif untuk menggali **insight bisnis** dan menyusun **rekomendasi strategis** berdasarkan data aktual.
 
 ---
 
@@ -10,6 +10,16 @@ Proyek ini disusun sebagai bagian dari pemenuhan tugas **Ujian Akhir Semester** 
 - Memvisualisasikan data transaksi retail online dari berbagai sudut pandang: penjualan, profit, pelanggan, produk, dan negara.
 - Memberikan analisis berbasis data untuk mendukung pengambilan keputusan.
 - Mengintegrasikan teknik eksplorasi data dan visualisasi modern menggunakan Python dan Streamlit.
+
+---
+
+## 🌐 Link Aplikasi Dashboard Online
+
+📎 Dashboard ini dapat diakses secara online melalui link berikut:
+
+👉 **[https://uas-dw-dashboard-online-retail.streamlit.app](https://uas-dw-dashboard-online-retail.streamlit.app)**
+
+Silakan buka melalui browser untuk mengeksplorasi insight dan visualisasi data interaktif.
 
 ---
 
@@ -30,4 +40,3 @@ Proyek ini disusun sebagai bagian dari pemenuhan tugas **Ujian Akhir Semester** 
    ```bash
    git clone https://github.com/Jahroadawiyahlubis/streamlit_dashboard.git
    cd streamlit_dashboard
-
