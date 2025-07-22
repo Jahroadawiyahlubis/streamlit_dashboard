@@ -10,9 +10,9 @@ def load_data():
     df = pd.read_csv("online_retail.csv", encoding="ISO-8859-1")
     
     # Data Cleaning sesuai laporan: Menangani missing values dan menghapus kuantitas/harga unit negatif
-    # [cite_start]Menghapus baris dengan CustomerID atau Description yang hilang [cite: 43, 78]
+    # Menghapus baris dengan CustomerID atau Description yang hilang
     df.dropna(subset=['CustomerID', 'Description'], inplace=True) 
-    # [cite_start]Menghapus transaksi dengan kuantitas negatif atau nol (pengembalian) [cite: 60, 80]
+    # Menghapus transaksi dengan kuantitas negatif atau nol (pengembalian)
     df = df[df["Quantity"] > 0] 
     # Menghapus transaksi dengan harga unit negatif atau nol
     df = df[df["UnitPrice"] > 0] 
@@ -21,19 +21,19 @@ def load_data():
     df["Total"] = df["Quantity"] * df["UnitPrice"]
     # Mengonversi InvoiceDate ke format datetime
     df["InvoiceDate"] = pd.to_datetime(df["InvoiceDate"])
-    # [cite_start]Mengekstrak bulan untuk analisis temporal [cite: 70]
+    # Mengekstrak bulan untuk analisis temporal
     df["Month"] = df["InvoiceDate"].dt.to_period("M").astype(str)
-    # [cite_start]Estimasi profit 25% dari total penjualan [cite: 135]
+    # Estimasi profit 25% dari total penjualan
     df["Profit"] = df["Total"] * 0.25  
 
-    # [cite_start]Analisis RFM (Recency, Frequency, Monetary) [cite: 68, 87]
+    # Analisis RFM (Recency, Frequency, Monetary)
     # Menggunakan tanggal transaksi terakhir + 1 hari sebagai tanggal snapshot untuk perhitungan Recency
     snapshot_date = df['InvoiceDate'].max() + pd.Timedelta(days=1) 
 
     rfm_df = df.groupby('CustomerID').agg(
         Recency=('InvoiceDate', lambda date: (snapshot_date - date.max()).days), # Hari sejak pembelian terakhir
-        [cite_start]Frequency=('InvoiceNo', 'nunique'), # Jumlah transaksi unik [cite: 68]
-        [cite_start]Monetary=('Total', 'sum') # Total pengeluaran [cite: 68]
+        Frequency=('InvoiceNo', 'nunique'), # Jumlah transaksi unik
+        Monetary=('Total', 'sum') # Total pengeluaran
     ).reset_index()
 
     # Mengubah CustomerID ke int untuk konsistensi (setelah dropna, mungkin berupa float)
@@ -51,7 +51,7 @@ st.sidebar.markdown("Sesuaikan tampilan dasbor berdasarkan kriteria di bawah.")
 selected_countries = st.sidebar.multiselect(
     "Pilih Negara", 
     sorted(df["Country"].unique()), 
-    [cite_start]default=["United Kingdom"] # Default UK karena mayoritas transaksi dari UK [cite: 40, 82]
+    default=["United Kingdom"] # Default UK karena mayoritas transaksi dari UK
 )
 selected_months = st.sidebar.multiselect(
     "Pilih Bulan", 
@@ -60,7 +60,8 @@ selected_months = st.sidebar.multiselect(
 )
 
 # Filter untuk produk akan hanya muncul jika pengguna memilihnya
-product_options = sorted(filtered_df["Description"].unique()) if 'filtered_df' in locals() else sorted(df["Description"].unique())
+# Perlu diperhatikan: filtered_df belum terdefinisi saat ini, jadi gunakan df saja untuk pilihan awal
+product_options = sorted(df["Description"].unique()) 
 selected_products = st.sidebar.multiselect(
     "Pilih Kategori Produk", 
     product_options
@@ -82,14 +83,14 @@ st.markdown("Dasbor interaktif ini menyajikan gambaran komprehensif tentang kine
 # --- Kartu KPI (Key Performance Indicators) ---
 st.subheader("Ringkasan Kinerja Utama")
 col1, col2, col3, col4, col5 = st.columns(5)
-[cite_start]col1.metric("💰 Total Penjualan", f"${filtered_df['Total'].sum():,.2f}") [cite: 134]
-[cite_start]col2.metric("💵 Estimasi Profit (25%)", f"${filtered_df['Profit'].sum():,.2f}") [cite: 135]
-[cite_start]col3.metric("📦 Jumlah Pesanan", f"{filtered_df['InvoiceNo'].nunique()}") [cite: 136]
+col1.metric("💰 Total Penjualan", f"${filtered_df['Total'].sum():,.2f}")
+col2.metric("💵 Estimasi Profit (25%)", f"${filtered_df['Profit'].sum():,.2f}")
+col3.metric("📦 Jumlah Pesanan", f"{filtered_df['InvoiceNo'].nunique()}")
 col4.metric("👥 Jumlah Pelanggan", f"{filtered_df['CustomerID'].nunique()}")
 aov = filtered_df['Total'].sum() / filtered_df['InvoiceNo'].nunique() if filtered_df['InvoiceNo'].nunique() > 0 else 0
-[cite_start]col5.metric("📐 Rata-rata Nilai Pesanan (AOV)", f"${aov:,.2f}") [cite: 137]
+col5.metric("📐 Rata-rata Nilai Pesanan (AOV)", f"${aov:,.2f}")
 
-[cite_start]st.info("📌 Estimasi profit dihitung sebagai 25% dari total penjualan karena data harga pokok tidak tersedia dalam dataset ini.") [cite: 135]
+st.info("📌 Estimasi profit dihitung sebagai 25% dari total penjualan karena data harga pokok tidak tersedia dalam dataset ini.")
 
 # --- Cuplikan Data ---
 st.subheader("📄 Cuplikan Data Transaksi Teratas")
@@ -126,7 +127,7 @@ with col_rfm2:
 st.header("📈 Tren & Kinerja Penjualan")
 
 # Tren Penjualan Bulanan
-[cite_start]st.subheader("Tren Penjualan Bulanan") [cite: 139]
+st.subheader("Tren Penjualan Bulanan")
 st.markdown("Analisis pola musiman dan tren pertumbuhan penjualan dari waktu ke waktu.")
 monthly_sales = filtered_df.groupby("Month")["Total"].sum().reset_index().sort_values("Month")
 fig_trend = px.line(
@@ -143,7 +144,7 @@ col_loc_prod1, col_loc_prod2 = st.columns(2)
 
 with col_loc_prod1:
     # Penjualan Negara
-    [cite_start]st.subheader("Total Penjualan per Negara (Top 10)") [cite: 140]
+    st.subheader("Total Penjualan per Negara (Top 10)")
     st.markdown("Identifikasi pasar dengan kinerja terbaik berdasarkan total penjualan.")
     country_sales = filtered_df.groupby("Country")["Total"].sum().sort_values(ascending=False).head(10)
     fig_country = px.bar(
@@ -193,7 +194,7 @@ with col_prod_top1:
 
 with col_prod_top2:
     # Komposisi Penjualan Produk (Grafik Donat)
-    [cite_start]st.subheader("Komposisi Penjualan Produk (Top 10)") [cite: 141]
+    st.subheader("Komposisi Penjualan Produk (Top 10)")
     st.markdown("Proporsi penjualan yang disumbangkan oleh 10 produk teratas.")
     top_product_sales = filtered_df.groupby("Description")["Total"].sum().sort_values(ascending=False).head(10)
     fig_donut = px.pie(
@@ -226,7 +227,7 @@ with col_aov_cust1:
 
 with col_aov_cust2:
     # Top 5 Pelanggan
-    [cite_start]st.subheader("Top 5 Pelanggan Berdasarkan Total Belanja") [cite: 142]
+    st.subheader("Top 5 Pelanggan Berdasarkan Total Belanja")
     st.markdown("Pelanggan paling berharga berdasarkan total pengeluaran mereka.")
     top_customers = filtered_df.groupby("CustomerID")["Total"].sum().sort_values(ascending=False).head(5)
     fig_customers = px.bar(
@@ -244,9 +245,9 @@ with col_aov_cust2:
 st.header("💡 Insight Strategis & Rekomendasi")
 st.markdown("Temuan utama dari analisis data untuk mendukung pengambilan keputusan bisnis yang lebih baik.")
 st.markdown("""
-- [cite_start]**Dominasi Pasar**: Inggris memiliki volume penjualan tertinggi secara absolut, menegaskan posisinya sebagai pasar utama. [cite: 150]
-- **Potensi Pertumbuhan**: Jerman menunjukkan Average Order Value (AOV) yang secara signifikan lebih tinggi, mengindikasikan bahwa pelanggan di Jerman cenderung membelanjakan lebih banyak per transaksi. [cite_start]Ini membuka peluang untuk strategi *bundling* atau penawaran premium yang ditargetkan. [cite: 150, 153]
-- [cite_start]**Fokus Produk**: Produk-produk yang berkontribusi terbesar terhadap total penjualan (berdasarkan kuantitas atau nilai) harus menjadi prioritas dalam strategi promosi, manajemen stok, dan pengembangan produk di masa mendatang. [cite: 141]
-- **Program Loyalitas Pelanggan**: Identifikasi dan berikan apresiasi kepada pelanggan dengan pengeluaran tertinggi melalui program loyalitas khusus. [cite_start]Ini dapat meningkatkan retensi dan nilai seumur hidup pelanggan (CLTV). [cite: 90]
-- **Optimalisasi Kampanye Musiman**: Tren penjualan bulanan menunjukkan pola musiman yang jelas. [cite_start]Manfaatkan informasi ini untuk merancang kampanye pemasaran yang tepat waktu, misalnya promosi khusus untuk periode puncak penjualan atau reaktivasi untuk periode rendah. [cite: 81]
+- **Dominasi Pasar**: Inggris memiliki volume penjualan tertinggi secara absolut, menegaskan posisinya sebagai pasar utama.
+- **Potensi Pertumbuhan**: Jerman menunjukkan Average Order Value (AOV) yang secara signifikan lebih tinggi, mengindikasikan bahwa pelanggan di Jerman cenderung membelanjakan lebih banyak per transaksi. Ini membuka peluang untuk strategi *bundling* atau penawaran premium yang ditargetkan.
+- **Fokus Produk**: Produk-produk yang berkontribusi terbesar terhadap total penjualan (berdasarkan kuantitas atau nilai) harus menjadi prioritas dalam strategi promosi, manajemen stok, dan pengembangan produk di masa mendatang.
+- **Program Loyalitas Pelanggan**: Identifikasi dan berikan apresiasi kepada pelanggan dengan pengeluaran tertinggi melalui program loyalitas khusus. Ini dapat meningkatkan retensi dan nilai seumur hidup pelanggan (CLTV).
+- **Optimalisasi Kampanye Musiman**: Tren penjualan bulanan menunjukkan pola musiman yang jelas. Manfaatkan informasi ini untuk merancang kampanye pemasaran yang tepat waktu, misalnya promosi khusus untuk periode puncak penjualan atau reaktivasi untuk periode rendah.
 """)
