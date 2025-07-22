@@ -59,7 +59,7 @@ with tabs[0]:
     col3.metric("📦 Jumlah Pesanan", f"{filtered_df['InvoiceNo'].nunique()}")
     col4.metric("👥 Jumlah Pelanggan", f"{filtered_df['CustomerID'].nunique()}")
     aov = filtered_df['Total'].sum() / filtered_df['InvoiceNo'].nunique()
-    col5.metric("📐 AOV", f"${aov:,.2f}")
+    col5.metric("📀 AOV", f"${aov:,.2f}")
 
     st.subheader("📈 Tren Penjualan Bulanan")
     monthly_sales = filtered_df.groupby("Month")["Total"].sum().reset_index().sort_values("Month")
@@ -79,89 +79,43 @@ with tabs[0]:
     st.plotly_chart(fig_map, use_container_width=True)
     st.caption("💡 Visualisasi distribusi penjualan berdasarkan negara.")
 
-    st.subheader("💸 Komposisi Profit per Produk (Top 10)")
-    profit_by_product = filtered_df.groupby("Description")["Profit"].sum().sort_values(ascending=False).head(10)
-    fig_donut = px.pie(names=profit_by_product.index, values=profit_by_product.values, hole=0.5)
-    st.plotly_chart(fig_donut, use_container_width=True)
-    st.caption("💡 Kontribusi profit dari produk-produk teratas.")
+    st.subheader("🌍 Total Penjualan per Negara (Top 10)")
+    top_country_sales = filtered_df.groupby("Country")["Total"].sum().sort_values(ascending=False).head(10)
+    fig_country = px.bar(
+        x=top_country_sales.values[::-1],
+        y=top_country_sales.index[::-1],
+        orientation="h",
+        title="Penjualan Negara (USD)",
+        labels={"x": "Total", "y": "Negara"},
+        text=[f"${v:,.2f}" for v in top_country_sales.values[::-1]]
+    )
+    st.plotly_chart(fig_country, use_container_width=True)
+
+    st.subheader("💵 Estimasi Profit per Negara (Top 10)")
+    top_profit_country = filtered_df.groupby("Country")["Profit"].sum().sort_values(ascending=False).head(10)
+    fig_profit = px.bar(
+        x=top_profit_country.values[::-1],
+        y=top_profit_country.index[::-1],
+        orientation="h",
+        title="Profit Negara (USD)",
+        labels={"x": "Profit", "y": "Negara"},
+        text=[f"${v:,.2f}" for v in top_profit_country.values[::-1]]
+    )
+    st.plotly_chart(fig_profit, use_container_width=True)
 
     st.subheader("👑 Top 5 Pelanggan Berdasarkan Total Belanja")
     top_customers = filtered_df.groupby("CustomerID")["Total"].sum().sort_values(ascending=False).head(5)
     st.dataframe(top_customers.reset_index().rename(columns={"Total": "TotalBelanja"}))
 
-with tabs[1]:
-    st.title("📌 Segmentasi Pelanggan - RFM")
-    rfm_df = df.groupby("CustomerID").agg({
-        "InvoiceDate": lambda x: (df["InvoiceDate"].max() - x.max()).days,
-        "InvoiceNo": "count",
-        "Total": "sum"
-    }).rename(columns={"InvoiceDate": "Recency", "InvoiceNo": "Frequency", "Total": "Monetary"})
-    scaler = StandardScaler()
-    rfm_scaled = scaler.fit_transform(rfm_df)
-    kmeans = KMeans(n_clusters=4, random_state=42).fit(rfm_scaled)
-    rfm_df["Cluster"] = kmeans.labels_
-
-    cluster_labels = {
-        0: "🟣 Cluster 0 - Baru / sesekali beli",
-        1: "🔵 Cluster 1 - Pasif / risiko churn",
-        2: "🟢 Cluster 2 - Setia & aktif",
-        3: "🟡 Cluster 3 - Pelanggan Terbaik"
-    }
-    rfm_df["ClusterLabel"] = rfm_df["Cluster"].map(cluster_labels)
-    fig_rfm = px.pie(rfm_df, names="ClusterLabel", title="Distribusi Klaster Pelanggan")
-    st.plotly_chart(fig_rfm)
-    st.dataframe(rfm_df.reset_index().head(10))
-    st.caption("💡 Segmentasi berdasarkan Recency, Frequency, dan Monetary untuk memahami perilaku pelanggan.")
-
-    st.markdown("""
-    **Penjelasan Klaster:**
-    - 🟡 Cluster 3 – Pelanggan Terbaik
-    - 🟢 Cluster 2 – Setia & aktif
-    - 🟣 Cluster 0 – Baru / sesekali beli
-    - 🔵 Cluster 1 – Pasif / risiko churn
-    """)
-
-with tabs[2]:
-    st.title("🛍️ Rekomendasi Produk - Market Basket (Apriori)")
-    basket_df = df[df['Country'] == 'Germany'].groupby(['InvoiceNo', 'Description'])["Quantity"].sum().unstack().fillna(0)
-    basket_df = basket_df.applymap(lambda x: 1 if x > 0 else 0)
-    frequent_itemsets = apriori(basket_df, min_support=0.02, use_colnames=True)
-    rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1)
-    st.dataframe(rules[["antecedents", "consequents", "support", "confidence", "lift"]].head(10))
-    st.caption("💡 Aturan asosiasi produk untuk rekomendasi bundling.")
-
-with tabs[3]:
-    st.title("🤖 Sistem Rekomendasi - Collaborative Filtering")
-    pivot = df.pivot_table(index='CustomerID', columns='Description', values='Total', aggfunc='sum').fillna(0)
-    similarity = cosine_similarity(pivot)
-    sim_df = pd.DataFrame(similarity, index=pivot.index, columns=pivot.index)
-    selected_id = st.selectbox("Pilih CustomerID", pivot.index.astype(int))
-    similar_scores = sim_df[selected_id].sort_values(ascending=False)[1:6]
-    st.write("Customer serupa:")
-    st.dataframe(similar_scores)
-    rec_customer = pivot.loc[similar_scores.index].mean().sort_values(ascending=False).head(5)
-    st.subheader("📦 Rekomendasi Produk Untuk Customer Ini")
-    st.dataframe(rec_customer)
-    st.caption("💡 Rekomendasi berdasarkan kemiripan perilaku pembelian pelanggan.")
-
-with tabs[4]:
-    st.title("⏳ Analisis Retensi Pelanggan")
-    df['CohortMonth'] = df['InvoiceDate'].dt.to_period("M")
-    cohort_data = df.groupby(['CustomerID']).agg({"InvoiceDate": "min"}).rename(columns={"InvoiceDate": "FirstPurchase"})
-    df = df.join(cohort_data, on="CustomerID")
-    df["CohortIndex"] = ((df['InvoiceDate'].dt.to_period("M") - df['FirstPurchase'].dt.to_period("M")).apply(attrgetter('n')))
-    cohort = df.groupby(["CohortMonth", "CohortIndex"]).agg({"CustomerID": "nunique"}).unstack().fillna(0)
-    st.dataframe(cohort.head(12))
-    st.caption("💡 Menunjukkan pola retensi pelanggan berdasarkan waktu pembelian pertama mereka.")
-
 with tabs[5]:
     st.title("💡 Insight dan Rekomendasi Strategis")
     st.markdown("""
     - 🇩🇪 Jerman memiliki AOV tertinggi → cocok untuk promosi bundling produk premium.
+    - 🇬🇧 Inggris memiliki volume penjualan tertinggi → pertahankan loyalitas dan targetkan penjualan ulang.
     - 🟡 Cluster 3 adalah pelanggan paling bernilai → beri loyalti atau reward.
     - 🔵 Cluster 1 = pelanggan pasif → buat kampanye reaktivasi.
     - 🛍️ Bundling produk dari Apriori bisa dijadikan rekomendasi eksplisit.
-    - 📅 Optimalkan kampanye akhir tahun berdasarkan tren bulanan penjualan.
+    - 🗕️ Optimalkan kampanye akhir tahun berdasarkan tren bulanan penjualan.
     """)
 
     aov_country = df.groupby("Country").agg({"Total": "sum", "InvoiceNo": "nunique"})
