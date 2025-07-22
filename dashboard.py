@@ -107,6 +107,63 @@ with tabs[0]:
     top_customers = filtered_df.groupby("CustomerID")["Total"].sum().sort_values(ascending=False).head(5)
     st.dataframe(top_customers.reset_index().rename(columns={"Total": "TotalBelanja"}))
 
+with tabs[1]:
+    st.title("📌 Segmentasi Pelanggan - RFM")
+    rfm_df = df.groupby("CustomerID").agg({
+        "InvoiceDate": lambda x: (df["InvoiceDate"].max() - x.max()).days,
+        "InvoiceNo": "count",
+        "Total": "sum"
+    }).rename(columns={"InvoiceDate": "Recency", "InvoiceNo": "Frequency", "Total": "Monetary"})
+    scaler = StandardScaler()
+    rfm_scaled = scaler.fit_transform(rfm_df)
+    kmeans = KMeans(n_clusters=4, random_state=42).fit(rfm_scaled)
+    rfm_df["Cluster"] = kmeans.labels_
+
+    cluster_labels = {
+        0: "🟣 Cluster 0 - Baru / sesekali beli",
+        1: "🔵 Cluster 1 - Pasif / risiko churn",
+        2: "🟢 Cluster 2 - Setia & aktif",
+        3: "🟡 Cluster 3 - Pelanggan Terbaik"
+    }
+    rfm_df["ClusterLabel"] = rfm_df["Cluster"].map(cluster_labels)
+    fig_rfm = px.pie(rfm_df, names="ClusterLabel", title="Distribusi Klaster Pelanggan")
+    st.plotly_chart(fig_rfm)
+    st.dataframe(rfm_df.reset_index().head(10))
+    st.caption("💡 Segmentasi berdasarkan Recency, Frequency, dan Monetary untuk memahami perilaku pelanggan.")
+
+with tabs[2]:
+    st.title("🛍️ Rekomendasi Produk - Market Basket (Apriori)")
+    basket_df = df[df['Country'] == 'Germany'].groupby(['InvoiceNo', 'Description'])["Quantity"].sum().unstack().fillna(0)
+    basket_df = basket_df.applymap(lambda x: 1 if x > 0 else 0)
+    frequent_itemsets = apriori(basket_df, min_support=0.02, use_colnames=True)
+    rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1)
+    st.dataframe(rules[["antecedents", "consequents", "support", "confidence", "lift"]].head(10))
+    st.caption("💡 Aturan asosiasi produk untuk rekomendasi bundling.")
+
+with tabs[3]:
+    st.title("🤖 Sistem Rekomendasi - Collaborative Filtering")
+    pivot = df.pivot_table(index='CustomerID', columns='Description', values='Total', aggfunc='sum').fillna(0)
+    similarity = cosine_similarity(pivot)
+    sim_df = pd.DataFrame(similarity, index=pivot.index, columns=pivot.index)
+    selected_id = st.selectbox("Pilih CustomerID", pivot.index.astype(str))
+    similar_scores = sim_df.loc[int(selected_id)].sort_values(ascending=False)[1:6]
+    st.write("Customer serupa:")
+    st.dataframe(similar_scores)
+    rec_customer = pivot.loc[similar_scores.index].mean().sort_values(ascending=False).head(5)
+    st.subheader("📦 Rekomendasi Produk Untuk Customer Ini")
+    st.dataframe(rec_customer)
+    st.caption("💡 Rekomendasi berdasarkan kemiripan perilaku pembelian pelanggan.")
+
+with tabs[4]:
+    st.title("⏳ Analisis Retensi Pelanggan")
+    df['CohortMonth'] = df['InvoiceDate'].dt.to_period("M")
+    cohort_data = df.groupby(['CustomerID']).agg({"InvoiceDate": "min"}).rename(columns={"InvoiceDate": "FirstPurchase"})
+    df = df.join(cohort_data, on="CustomerID")
+    df["CohortIndex"] = ((df['InvoiceDate'].dt.to_period("M") - df['FirstPurchase'].dt.to_period("M")).apply(attrgetter('n')))
+    cohort = df.groupby(["CohortMonth", "CohortIndex"]).agg({"CustomerID": "nunique"}).unstack().fillna(0)
+    st.dataframe(cohort.head(12))
+    st.caption("💡 Menunjukkan pola retensi pelanggan berdasarkan waktu pembelian pertama mereka.")
+
 with tabs[5]:
     st.title("💡 Insight dan Rekomendasi Strategis")
     st.markdown("""
