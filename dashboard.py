@@ -146,7 +146,7 @@ with tabs[3]:
     similarity = cosine_similarity(pivot)
     sim_df = pd.DataFrame(similarity, index=pivot.index, columns=pivot.index)
     selected_id = st.selectbox("Pilih CustomerID", pivot.index.astype(str))
-    similar_scores = sim_df.loc[int(selected_id)].sort_values(ascending=False)[1:6]
+    similar_scores = sim_df.loc[float(selected_id)].sort_values(ascending=False)[1:6]
     st.write("Customer serupa:")
     st.dataframe(similar_scores)
     rec_customer = pivot.loc[similar_scores.index].mean().sort_values(ascending=False).head(5)
