@@ -145,14 +145,22 @@ with tabs[3]:
     pivot = df.pivot_table(index='CustomerID', columns='Description', values='Total', aggfunc='sum').fillna(0)
     similarity = cosine_similarity(pivot)
     sim_df = pd.DataFrame(similarity, index=pivot.index, columns=pivot.index)
-    selected_id = st.selectbox("Pilih CustomerID", pivot.index.astype(str))
-    similar_scores = sim_df.loc[float(selected_id)].sort_values(ascending=False)[1:6]
-    st.write("Customer serupa:")
-    st.dataframe(similar_scores)
-    rec_customer = pivot.loc[similar_scores.index].mean().sort_values(ascending=False).head(5)
-    st.subheader("📦 Rekomendasi Produk Untuk Customer Ini")
-    st.dataframe(rec_customer)
-    st.caption("💡 Rekomendasi berdasarkan kemiripan perilaku pembelian pelanggan.")
+
+    customer_ids = pivot.index.astype(str)
+    selected_id = st.selectbox("Pilih CustomerID", customer_ids)
+    selected_id_float = float(selected_id)
+
+    if selected_id_float in sim_df.index:
+        similar_scores = sim_df.loc[selected_id_float].sort_values(ascending=False)[1:6]
+        st.write("Customer serupa:")
+        st.dataframe(similar_scores)
+
+        rec_customer = pivot.loc[similar_scores.index].mean().sort_values(ascending=False).head(5)
+        st.subheader("📦 Rekomendasi Produk Untuk Customer Ini")
+        st.dataframe(rec_customer)
+        st.caption("💡 Rekomendasi berdasarkan kemiripan perilaku pembelian pelanggan.")
+    else:
+        st.warning("CustomerID tidak ditemukan dalam data similarity.")
 
 with tabs[4]:
     st.title("⏳ Analisis Retensi Pelanggan")
