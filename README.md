@@ -50,10 +50,10 @@ Struktur direktori proyek ini dirancang agar rapi dan mudah dipahami:
 ```
 
 .
-├── dashboard.py        \# Skrip utama aplikasi dasbor Streamlit
-├── online_retail.csv   \# Dataset transaksi ritel online
-├── README.md           \# Dokumentasi lengkap proyek ini
-└── requirements.txt    \# Daftar pustaka/library Python yang dibutuhkan
+├── dashboard.py        # Skrip utama aplikasi dasbor Streamlit
+├── online_retail.csv   # Dataset transaksi ritel online
+├── README.md           # Dokumentasi lengkap proyek ini
+└── requirements.txt    # Daftar pustaka/library Python yang dibutuhkan
 
 ```
 
