@@ -39,6 +39,33 @@ def load_data():
     # Mengubah CustomerID ke int untuk konsistensi (setelah dropna, mungkin berupa float)
     rfm_df['CustomerID'] = rfm_df['CustomerID'].astype(int)
 
+    # --- Simplified RFM Segmentation for Visualization ---
+    # Assign RFM scores based on quantiles (Higher R is worse, Higher F, M is better)
+    # For Recency, lower values are better (more recent), so score 5 goes to lowest R.
+    rfm_df['R_Score'] = pd.qcut(rfm_df['Recency'], 5, labels=[5, 4, 3, 2, 1], duplicates='drop')
+    # For Frequency and Monetary, higher values are better, so score 5 goes to highest F/M.
+    rfm_df['F_Score'] = pd.qcut(rfm_df['Frequency'], 5, labels=[1, 2, 3, 4, 5], duplicates='drop')
+    rfm_df['M_Score'] = pd.qcut(rfm_df['Monetary'], 5, labels=[1, 2, 3, 4, 5], duplicates='drop')
+
+    # Combine RFM scores into a segment
+    # This is a basic example. In real K-Means, you'd get clusters.
+    # For a dashboard, a heuristic segmentation can be useful for visualization.
+    def rfm_segment(row):
+        if row['R_Score'] == 5 and row['F_Score'] == 5 and row['M_Score'] == 5:
+            return 'Champions'
+        elif row['R_Score'] == 5 and row['F_Score'] >= 4 and row['M_Score'] >= 4:
+            return 'Loyal Customers'
+        elif row['R_Score'] >= 4 and row['F_Score'] >= 4 and row['M_Score'] >= 4:
+            return 'Potential Loyalists'
+        elif row['R_Score'] <= 2 and row['F_Score'] <= 2 and row['M_Score'] <= 2:
+            return 'At Risk/Lost'
+        elif row['R_Score'] == 5 and row['F_Score'] == 1 and row['M_Score'] == 1:
+            return 'New Customers'
+        else:
+            return 'Others' # Or refine more segments
+
+    rfm_df['RFM_Segment'] = rfm_df.apply(rfm_segment, axis=1)
+
     return df, rfm_df
 
 # Memuat data transaksi yang sudah dibersihkan dan data RFM
@@ -59,22 +86,29 @@ selected_months = st.sidebar.multiselect(
     default=sorted(df["Month"].unique()) # Default semua bulan atau beberapa bulan pertama
 )
 
-# Filter untuk produk akan hanya muncul jika pengguna memilihnya
-# Perlu diperhatikan: filtered_df belum terdefinisi saat ini, jadi gunakan df saja untuk pilihan awal
-product_options = sorted(df["Description"].unique()) 
+# --- Menerapkan Filter ke DataFrame Utama (initial filtering) ---
+# This filtered_df is used to make the product_options dynamic.
+# It needs to be calculated before the product multiselect options are determined.
+pre_filtered_df_for_products = df[
+    (df["Country"].isin(selected_countries)) &
+    (df["Month"].isin(selected_months))
+]
+
+product_options = sorted(pre_filtered_df_for_products["Description"].unique()) 
 selected_products = st.sidebar.multiselect(
     "Pilih Kategori Produk", 
     product_options
 )
 
-# --- Menerapkan Filter ke DataFrame Utama ---
-filtered_df = df[
-    (df["Country"].isin(selected_countries)) &
-    (df["Month"].isin(selected_months))
-]
-
+# --- Final Filtering ---
+filtered_df = pre_filtered_df_for_products # Start with the pre-filtered DF
 if selected_products:
     filtered_df = filtered_df[filtered_df["Description"].isin(selected_products)]
+
+# --- Reset Filter Button ---
+if st.sidebar.button("🔄 Reset Filter"):
+    st.session_state.clear() # Clear all session state
+    st.experimental_rerun() # Rerun the app to reset filters
 
 # --- Judul Dashboard ---
 st.title("📊 Dasbor Kinerja Penjualan Ritel Online")
@@ -93,19 +127,33 @@ col5.metric("📐 Rata-rata Nilai Pesanan (AOV)", f"${aov:,.2f}")
 st.info("📌 Estimasi profit dihitung sebagai 25% dari total penjualan karena data harga pokok tidak tersedia dalam dataset ini.")
 
 # --- Cuplikan Data ---
-st.subheader("📄 Cuplikan Data Transaksi Teratas")
-st.markdown("Berikut adalah beberapa baris pertama dari data transaksi yang telah difilter.")
-st.dataframe(filtered_df.head(10), use_container_width=True)
+with st.expander("📄 Lihat Cuplikan Data Transaksi Teratas"):
+    st.markdown("Berikut adalah beberapa baris pertama dari data transaksi yang telah difilter.")
+    st.dataframe(filtered_df.head(10), use_container_width=True)
+    st.download_button(
+        label="Unduh Data Transaksi Filtered",
+        data=filtered_df.to_csv(index=False).encode('utf-8'),
+        file_name='filtered_transactions.csv',
+        mime='text/csv',
+    )
+
 
 # --- Analisis Pelanggan (RFM) ---
-st.header("👤 Analisis Pelanggan")
-st.markdown("Memahami pelanggan Anda melalui metrik Recency (kapan terakhir membeli), Frequency (seberapa sering membeli), dan Monetary (berapa banyak yang dibelanjakan).")
+st.header("👤 Analisis Pelanggan & Segmentasi RFM")
+st.markdown("Memahami pelanggan Anda melalui metrik Recency (kapan terakhir membeli), Frequency (seberapa sering membeli), dan Monetary (berapa banyak yang dibelanjakan), dan segmen RFM.")
 
 col_rfm1, col_rfm2 = st.columns([1, 2])
 
 with col_rfm1:
     st.subheader("Cuplikan Data RFM")
     st.dataframe(rfm_df.head(10), use_container_width=True)
+    st.download_button(
+        label="Unduh Data RFM",
+        data=rfm_df.to_csv(index=False).encode('utf-8'),
+        file_name='rfm_data.csv',
+        mime='text/csv',
+    )
+    
     st.markdown("Distribusi metrik RFM: ")
     rfm_metric_choice = st.radio(
         "Pilih Metrik RFM untuk Visualisasi Distribusi:",
@@ -118,12 +166,29 @@ with col_rfm2:
         rfm_df, 
         x=rfm_metric_choice, 
         nbins=50, 
-        title=f"Distribusi {rfm_metric_choice} Pelanggan"
+        title=f"Distribusi {rfm_metric_choice} Pelanggan",
+        template="plotly_white" # Modern template
     )
     fig_rfm_dist.update_layout(bargap=0.1)
     st.plotly_chart(fig_rfm_dist, use_container_width=True)
 
-# --- Grafik Utama ---
+# Scatter plot of Recency vs Frequency, colored by RFM Segment
+st.subheader("Visualisasi Segmentasi Pelanggan (RFM)")
+st.markdown("Sebaran pelanggan berdasarkan Recency dan Frequency, diwarnai oleh segmen RFM yang telah ditentukan. *(Segmentasi ini adalah contoh heuristik untuk visualisasi, bukan hasil dari K-Means)*.")
+fig_rfm_scatter = px.scatter(
+    rfm_df, 
+    x="Recency", 
+    y="Frequency", 
+    color="RFM_Segment", 
+    hover_name="CustomerID",
+    size="Monetary", # Size of marker based on Monetary value
+    title="Segmentasi Pelanggan Berdasarkan RFM",
+    labels={"Recency": "Recency (Hari Lalu)", "Frequency": "Frekuensi Pembelian"},
+    template="plotly_white"
+)
+st.plotly_chart(fig_rfm_scatter, use_container_width=True)
+
+# --- Grafik Utama Penjualan & Produk ---
 st.header("📈 Tren & Kinerja Penjualan")
 
 # Tren Penjualan Bulanan
@@ -134,79 +199,86 @@ fig_trend = px.line(
     monthly_sales, x="Month", y="Total",
     markers=True,
     title="Tren Penjualan Bulanan",
-    text=[f"${x:,.0f}" for x in monthly_sales["Total"]]
+    text=[f"${x:,.0f}" for x in monthly_sales["Total"]],
+    template="plotly_white"
 )
 fig_trend.update_traces(textposition="top center")
 st.plotly_chart(fig_trend, use_container_width=True)
 
-# Penjualan Berdasarkan Lokasi dan Produk
-col_loc_prod1, col_loc_prod2 = st.columns(2)
+# Penjualan Berdasarkan Lokasi dan Produk (menggunakan st.tabs untuk modernitas)
+st.header("🌎 Analisis Geografis & Produk")
+tab1, tab2 = st.tabs(["Penjualan per Negara", "Kinerja Produk"])
 
-with col_loc_prod1:
-    # Penjualan Negara
-    st.subheader("Total Penjualan per Negara (Top 10)")
-    st.markdown("Identifikasi pasar dengan kinerja terbaik berdasarkan total penjualan.")
-    country_sales = filtered_df.groupby("Country")["Total"].sum().sort_values(ascending=False).head(10)
-    fig_country = px.bar(
-        x=country_sales.values[::-1], # Membalik urutan untuk ascending bar
-        y=country_sales.index[::-1],
-        orientation="h",
-        title="Penjualan Negara (USD)",
-        labels={"x": "Total Penjualan", "y": "Negara"},
-        text=[f"${v:,.2f}" for v in country_sales.values[::-1]]
-    )
-    fig_country.update_layout(showlegend=False)
-    st.plotly_chart(fig_country, use_container_width=True)
+with tab1:
+    col_loc1, col_loc2 = st.columns(2)
+    with col_loc1:
+        # Penjualan Negara
+        st.subheader("Total Penjualan per Negara (Top 10)")
+        st.markdown("Identifikasi pasar dengan kinerja terbaik berdasarkan total penjualan.")
+        country_sales = filtered_df.groupby("Country")["Total"].sum().sort_values(ascending=False).head(10)
+        fig_country = px.bar(
+            x=country_sales.values[::-1], 
+            y=country_sales.index[::-1],
+            orientation="h",
+            title="Penjualan Negara (USD)",
+            labels={"x": "Total Penjualan", "y": "Negara"},
+            text=[f"${v:,.2f}" for v in country_sales.values[::-1]],
+            template="plotly_white"
+        )
+        fig_country.update_layout(showlegend=False)
+        st.plotly_chart(fig_country, use_container_width=True)
+    with col_loc2:
+        # Profit per Negara
+        st.subheader("Estimasi Profit per Negara (Top 10)")
+        st.markdown("Estimasi profit dari penjualan di berbagai negara.")
+        profit_country = filtered_df.groupby("Country")["Profit"].sum().sort_values(ascending=False).head(10)
+        fig_profit = px.bar(
+            x=profit_country.values[::-1],
+            y=profit_country.index[::-1],
+            orientation="h",
+            title="Profit Negara (USD)",
+            labels={"x": "Estimasi Profit", "y": "Negara"},
+            text=[f"${v:,.2f}" for v in profit_country.values[::-1]],
+            template="plotly_white"
+        )
+        fig_profit.update_layout(showlegend=False)
+        st.plotly_chart(fig_profit, use_container_width=True)
 
-with col_loc_prod2:
-    # Profit per Negara
-    st.subheader("Estimasi Profit per Negara (Top 10)")
-    st.markdown("Estimasi profit dari penjualan di berbagai negara.")
-    profit_country = filtered_df.groupby("Country")["Profit"].sum().sort_values(ascending=False).head(10)
-    fig_profit = px.bar(
-        x=profit_country.values[::-1],
-        y=profit_country.index[::-1],
-        orientation="h",
-        title="Profit Negara (USD)",
-        labels={"x": "Estimasi Profit", "y": "Negara"},
-        text=[f"${v:,.2f}" for v in profit_country.values[::-1]]
-    )
-    fig_profit.update_layout(showlegend=False)
-    st.plotly_chart(fig_profit, use_container_width=True)
+with tab2:
+    col_prod1, col_prod2 = st.columns(2)
+    with col_prod1:
+        # Produk Terlaris
+        st.subheader("Top 10 Produk Terlaris (Kuantitas)")
+        st.markdown("Produk yang paling banyak terjual berdasarkan kuantitas.")
+        top_products = filtered_df.groupby("Description")["Quantity"].sum().sort_values(ascending=False).head(10)
+        fig_top_products = px.bar(
+            x=top_products.values[::-1],
+            y=top_products.index[::-1],
+            orientation="h",
+            title="Produk Terlaris Berdasarkan Kuantitas",
+            labels={"x": "Jumlah Terjual", "y": "Produk"},
+            text=top_products.values[::-1],
+            template="plotly_white"
+        )
+        fig_top_products.update_layout(showlegend=False)
+        st.plotly_chart(fig_top_products, use_container_width=True)
+    with col_prod2:
+        # Komposisi Penjualan Produk (Grafik Donat)
+        st.subheader("Komposisi Penjualan Produk (Top 10)")
+        st.markdown("Proporsi penjualan yang disumbangkan oleh 10 produk teratas.")
+        top_product_sales = filtered_df.groupby("Description")["Total"].sum().sort_values(ascending=False).head(10)
+        fig_donut = px.pie(
+            names=top_product_sales.index,
+            values=top_product_sales.values,
+            title="Komposisi Penjualan Produk (Top 10)",
+            hole=0.5,
+            template="plotly_white"
+        )
+        fig_donut.update_traces(textinfo='percent+label')
+        st.plotly_chart(fig_donut, use_container_width=True)
 
-col_prod_top1, col_prod_top2 = st.columns(2)
-
-with col_prod_top1:
-    # Produk Terlaris
-    st.subheader("Top 10 Produk Terlaris (Kuantitas)")
-    st.markdown("Produk yang paling banyak terjual berdasarkan kuantitas.")
-    top_products = filtered_df.groupby("Description")["Quantity"].sum().sort_values(ascending=False).head(10)
-    fig_top_products = px.bar(
-        x=top_products.values[::-1],
-        y=top_products.index[::-1],
-        orientation="h",
-        title="Produk Terlaris Berdasarkan Kuantitas",
-        labels={"x": "Jumlah Terjual", "y": "Produk"},
-        text=top_products.values[::-1]
-    )
-    fig_top_products.update_layout(showlegend=False)
-    st.plotly_chart(fig_top_products, use_container_width=True)
-
-with col_prod_top2:
-    # Komposisi Penjualan Produk (Grafik Donat)
-    st.subheader("Komposisi Penjualan Produk (Top 10)")
-    st.markdown("Proporsi penjualan yang disumbangkan oleh 10 produk teratas.")
-    top_product_sales = filtered_df.groupby("Description")["Total"].sum().sort_values(ascending=False).head(10)
-    fig_donut = px.pie(
-        names=top_product_sales.index,
-        values=top_product_sales.values,
-        title="Komposisi Penjualan Produk (Top 10)",
-        hole=0.5
-    )
-    fig_donut.update_traces(textinfo='percent+label')
-    st.plotly_chart(fig_donut, use_container_width=True)
-
-# AOV per Negara & Top Pelanggan
+# AOV per Negara & Top Pelanggan (Menggunakan st.container atau st.expander untuk struktur)
+st.header("🎯 Analisis Nilai & Loyalitas Pelanggan")
 col_aov_cust1, col_aov_cust2 = st.columns(2)
 
 with col_aov_cust1:
@@ -220,7 +292,8 @@ with col_aov_cust1:
         orientation="h",
         title="Average Order Value per Negara",
         labels={"x": "AOV", "y": "Negara"},
-        text=[f"${v:,.2f}" for v in aov_country.values[::-1]]
+        text=[f"${v:,.2f}" for v in aov_country.values[::-1]],
+        template="plotly_white"
     )
     fig_aov.update_layout(showlegend=False)
     st.plotly_chart(fig_aov, use_container_width=True)
@@ -236,7 +309,8 @@ with col_aov_cust2:
         orientation="h",
         title="Top 5 Pelanggan Berdasarkan Total Belanja",
         labels={"x": "Total Belanja", "y": "ID Pelanggan"},
-        text=[f"${v:,.2f}" for v in top_customers.values[::-1]]
+        text=[f"${v:,.2f}" for v in top_customers.values[::-1]],
+        template="plotly_white"
     )
     fig_customers.update_layout(showlegend=False)
     st.plotly_chart(fig_customers, use_container_width=True)
