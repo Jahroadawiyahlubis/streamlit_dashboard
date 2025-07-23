@@ -51,7 +51,7 @@ Struktur direktori proyek ini dirancang agar rapi dan mudah dipahami:
 
 .
 ├── dashboard.py        \# Skrip utama aplikasi dasbor Streamlit
-├── online\_retail.csv   \# Dataset transaksi ritel online
+├── online_retail.csv   \# Dataset transaksi ritel online
 ├── README.md           \# Dokumentasi lengkap proyek ini
 └── requirements.txt    \# Daftar pustaka/library Python yang dibutuhkan
 
@@ -94,5 +94,3 @@ Berdasarkan analisis yang disajikan dalam dasbor, beberapa *insight* dan rekomen
 * **Pemanfaatan Tren Musiman**: Pola **tren penjualan bulanan** menunjukkan fluktuasi musiman yang jelas. Gunakan *insight* ini untuk merencanakan kampanye pemasaran yang tepat waktu, promosi khusus selama periode puncak penjualan, atau strategi reaktivasi selama periode penjualan rendah.
 * **Strategi Reaktivasi Pelanggan**: Segmen 'At Risk/Lost' dalam analisis RFM perlu diperhatikan. Kampanye penawaran khusus atau survei umpan balik dapat membantu menarik kembali pelanggan yang kurang aktif.
 
----
-```
