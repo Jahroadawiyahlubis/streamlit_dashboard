@@ -41,11 +41,37 @@ def load_data():
 
     # --- Simplified RFM Segmentation for Visualization ---
     # Assign RFM scores based on quantiles (Higher R is worse, Higher F, M is better)
+    
     # For Recency, lower values are better (more recent), so score 5 goes to lowest R.
-    rfm_df['R_Score'] = pd.qcut(rfm_df['Recency'], 5, labels=[5, 4, 3, 2, 1], duplicates='drop')
+    num_unique_r = rfm_df['Recency'].nunique()
+    if num_unique_r < 2: # Cannot create bins if less than 2 unique values
+        rfm_df['R_Score'] = 5 if num_unique_r == 1 else 1 # Assign 5 if only one value (best), else 1
+    else:
+        # Determine the effective number of quantiles, max 5
+        q_r = min(5, num_unique_r)
+        # Get bin indices (0 to q_r-1)
+        rfm_df['R_Score'] = pd.qcut(rfm_df['Recency'], q=q_r, labels=False, duplicates='drop')
+        # Map to 1-q_r, then reverse for Recency (lower value = higher score)
+        rfm_df['R_Score'] = q_r - rfm_df['R_Score'] # This maps 0 to q_r, 1 to q_r-1, etc.
+        rfm_df['R_Score'] = rfm_df['R_Score'].astype(int)
+
+
     # For Frequency and Monetary, higher values are better, so score 5 goes to highest F/M.
-    rfm_df['F_Score'] = pd.qcut(rfm_df['Frequency'], 5, labels=[1, 2, 3, 4, 5], duplicates='drop')
-    rfm_df['M_Score'] = pd.qcut(rfm_df['Monetary'], 5, labels=[1, 2, 3, 4, 5], duplicates='drop')
+    num_unique_f = rfm_df['Frequency'].nunique()
+    if num_unique_f < 2:
+        rfm_df['F_Score'] = 1 if num_unique_f == 1 else 1
+    else:
+        q_f = min(5, num_unique_f)
+        rfm_df['F_Score'] = pd.qcut(rfm_df['Frequency'], q=q_f, labels=False, duplicates='drop') + 1
+        rfm_df['F_Score'] = rfm_df['F_Score'].astype(int)
+
+    num_unique_m = rfm_df['Monetary'].nunique()
+    if num_unique_m < 2:
+        rfm_df['M_Score'] = 1 if num_unique_m == 1 else 1
+    else:
+        q_m = min(5, num_unique_m)
+        rfm_df['M_Score'] = pd.qcut(rfm_df['Monetary'], q=q_m, labels=False, duplicates='drop') + 1
+        rfm_df['M_Score'] = rfm_df['M_Score'].astype(int)
 
     # Combine RFM scores into a segment
     # This is a basic example. In real K-Means, you'd get clusters.
