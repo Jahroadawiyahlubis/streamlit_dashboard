@@ -1,8 +1,4 @@
-Anda ingin menghilangkan bagian "Cara Menjalankan Dashboard Secara Lokal" dari `README.md` karena aplikasi sudah di-deploy dan memiliki tautan akses online. Tentu, ini draf `README.md` yang telah disesuaikan:
-
-```markdown
-# 📊 Dasbor Kinerja Penjualan Ritel Online (Streamlit)
-
+# 📊 Dasbor Kinerja Penjualan Ritel Online 
 Proyek ini disusun sebagai bagian dari pemenuhan tugas **Ujian Akhir Semester** mata kuliah **Data Warehouse dan Big Data** dengan Dosen Pengampu Ibu **Inna Sabilly Karima, S.Kom, M.Kom**. Dashboard interaktif ini dibangun menggunakan Streamlit, dengan tujuan menyajikan visualisasi data transaksi *e-commerce* secara informatif untuk menggali **insight bisnis** dan menyusun **rekomendasi strategis** berdasarkan data aktual yang telah diproses dan dianalisis.
 
 ---
