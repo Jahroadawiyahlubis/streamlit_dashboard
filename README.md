@@ -40,7 +40,6 @@ Dasbor ini dirancang dengan berbagai fitur interaktif untuk pengalaman analisis 
 
 👉 **[https://uas-dw-dashboard-online-retail.streamlit.app](https://uas-dw-dashboard-online-retail.streamlit.app)**
 
-Silakan kunjungi *link* di atas melalui *browser* Anda untuk menjelajahi *insight* dan visualisasi data interaktif ini.
 
 ---
 
